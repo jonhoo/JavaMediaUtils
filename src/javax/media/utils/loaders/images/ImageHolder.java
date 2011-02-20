@@ -1,7 +1,6 @@
 package javax.media.utils.loaders.images;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,10 +33,10 @@ public class ImageHolder {
      * Note that for GroupImageHolders, imageFile must not be null as it
      * is used to determine the index for the given image.
      * 
-     * @param imageFile an object representing the given image on disk
+     * @param imageName an object representing the given image on disk
      * @param image the buffered representation of the image
      */
-    public void addImage ( File imageFile, BufferedImage image ) {
+    public void addImage ( String imageName, BufferedImage image ) {
         this.images.add ( image );
     }
 

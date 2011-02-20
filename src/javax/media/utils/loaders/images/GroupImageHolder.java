@@ -1,7 +1,6 @@
 package javax.media.utils.loaders.images;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,13 +13,13 @@ public class GroupImageHolder extends ImageHolder {
     }
 
     @Override
-    public void addImage ( File imageFile, BufferedImage image ) {
+    public void addImage ( String imageName, BufferedImage image ) {
         // We can't allow images in a group that don't have a name!
-        if ( imageFile == null )
+        if ( imageName == null )
             return;
 
-        super.addImage ( imageFile, image );
-        this.imageNames.add ( ImageLoader.getFileName ( imageFile ) );
+        super.addImage ( imageName, image );
+        this.imageNames.add ( ImageLoader.getResourceIndex ( imageName ) );
     }
 
     /**

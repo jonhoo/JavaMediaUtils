@@ -2,8 +2,9 @@ package javax.media.utils.loaders.sound;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
@@ -32,9 +33,9 @@ public class SoundLoader {
      * Sets up the current class and parses the given configuration file
      * 
      * @param configFilePath Path to configuration file
-     * @see #loadSoundsFromConfig(File)
+     * @see #loadSoundsFromConfig(InputStream)
      */
-    public SoundLoader ( File configurationFile ) throws IOException, BadConfigurationLineException {
+    public SoundLoader ( InputStream configurationFile ) throws IOException, BadConfigurationLineException {
         this ( );
         loadSoundsFromConfig ( configurationFile );
     }
@@ -62,10 +63,10 @@ public class SoundLoader {
      * @throws IOException if the configuration file could not be read
      * @throws BadConfigurationLineException if the configuration file contains invalid lines
      */
-    private void loadSoundsFromConfig ( File configurationFile ) throws IOException, BadConfigurationLineException {
+    private void loadSoundsFromConfig ( InputStream configurationFile ) throws IOException, BadConfigurationLineException {
         System.out.println ( "Reading sound configuration file: " + configurationFile );
 
-        BufferedReader br = new BufferedReader ( new FileReader ( configurationFile ) );
+        BufferedReader br = new BufferedReader ( new InputStreamReader ( configurationFile ) );
         String line;
         int lineNumber = 0;
 
@@ -86,9 +87,10 @@ public class SoundLoader {
             if ( tokens.countTokens ( ) != 1 )
                 throw new BadConfigurationLineException ( "No filename found for sound" );
 
-            File soundFile = new File ( configurationFile.getParentFile ( ), tokens.nextToken ( ) );
-            if ( !soundFile.exists ( ) || !soundFile.canRead ( ) )
-                throw new BadConfigurationLineException ( "File for sound does not exist or is not readable" );
+            String name = tokens.nextToken ( );
+            InputStream is = this.getClass ( ).getResourceAsStream ( name );
+            if ( is == null )
+                throw new BadConfigurationLineException ( "File for sound " + name + " does not exist or is not readable" );
 
             char ch = Character.toLowerCase ( line.charAt ( 0 ) );
             try {
@@ -99,7 +101,7 @@ public class SoundLoader {
                         case 'm':
                             if ( this.midi == null )
                                 this.midi = new MidiLoader ( );
-                            s = this.midi.getMidiHolder ( SoundLoader.getFileName ( soundFile ) );
+                            s = this.midi.getMidiHolder ( SoundLoader.getResourceIndex ( name ) );
                             break;
                         // Java Sound Clip API
                         case 'c':
@@ -110,8 +112,8 @@ public class SoundLoader {
                     }
 
                     try {
-                        s.loadFile ( soundFile );
-                        this.soundMap.put ( SoundLoader.getFileName ( soundFile ), s );
+                        s.loadStream ( is );
+                        this.soundMap.put ( SoundLoader.getResourceIndex ( name ), s );
                     } catch ( UnsupportedAudioFileException e ) {
                         throw new BadConfigurationLineException ( "Failed to load audo file: " + e.getMessage ( ) );
                     }
@@ -124,7 +126,6 @@ public class SoundLoader {
                 // Recatch the exception to add additional debug information
                 e.setLineNumber ( lineNumber );
                 e.setLine ( line );
-                e.setConfigurationFile ( configurationFile );
                 throw e;
             }
         }
@@ -152,15 +153,16 @@ public class SoundLoader {
     }
 
     /**
-     * Returns the file name of the given file (without the extension)
+     * Returns an appropriate name for the given resource
      * 
-     * @param file File to get name of
+     * @param name Resource to get index for
      * @return Name of file without extension
      */
-    public static String getFileName ( File file ) {
-        int index = file.getName ( ).lastIndexOf ( '.' );
-        if ( index > 0 && index <= file.getName ( ).length ( ) - 2 )
-            return file.getName ( ).substring ( 0, index );
+    public static String getResourceIndex ( String name ) {
+        File f = new File ( name );
+        int index = f.getName ( ).lastIndexOf ( '.' );
+        if ( index > 0 && index <= f.getName ( ).length ( ) - 2 )
+            return f.getName ( ).substring ( 0, index );
         return "";
     }
 }

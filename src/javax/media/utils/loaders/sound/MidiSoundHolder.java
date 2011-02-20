@@ -1,7 +1,7 @@
 package javax.media.utils.loaders.sound;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
@@ -33,9 +33,9 @@ public class MidiSoundHolder extends BaseSoundHolder implements MetaEventListene
     }
 
     @Override
-    public void loadFile ( File soundFile ) throws UnsupportedAudioFileException, IOException {
+    public void loadStream ( InputStream soundStream ) throws UnsupportedAudioFileException, IOException {
         try {
-            this.sequence = MidiSystem.getSequence ( soundFile );
+            this.sequence = MidiSystem.getSequence ( soundStream );
         } catch ( InvalidMidiDataException e ) {
             throw new UnsupportedAudioFileException ( e.getMessage ( ) );
         }

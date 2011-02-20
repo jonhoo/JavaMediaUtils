@@ -5,8 +5,9 @@ import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -30,9 +31,9 @@ public class ImageLoader {
      * Sets up the current class and parses the given configuration file
      * 
      * @param configFilePath Path to configuration file
-     * @see #loadImagesFromConfig(File)
+     * @see #loadImagesFromConfig(InputStream)
      */
-    public ImageLoader ( File configurationFile ) throws IOException, BadConfigurationLineException {
+    public ImageLoader ( InputStream configurationFile ) throws IOException, BadConfigurationLineException {
         this ( );
         loadImagesFromConfig ( configurationFile );
     }
@@ -70,10 +71,10 @@ public class ImageLoader {
      * @throws IOException if the configuration file could not be read
      * @throws BadConfigurationLineException if the configuration file contains invalid lines
      */
-    private void loadImagesFromConfig ( File configurationFile ) throws IOException, BadConfigurationLineException {
+    private void loadImagesFromConfig ( InputStream configurationFile ) throws IOException, BadConfigurationLineException {
         System.out.println ( "Reading image configuration file: " + configurationFile );
 
-        BufferedReader br = new BufferedReader ( new FileReader ( configurationFile ) );
+        BufferedReader br = new BufferedReader ( new InputStreamReader ( configurationFile ) );
         String line;
         int lineNumber = 0;
 
@@ -99,8 +100,9 @@ public class ImageLoader {
                         case 'o':
                             if ( tokens.countTokens ( ) != 1 )
                                 throw new BadConfigurationLineException ( "No image filename found for single image" );
-                            File image = new File ( configurationFile.getParentFile ( ), tokens.nextToken ( ) );
-                            this.loadImages ( ImageLoader.getFileName ( image ), new File[] { image }, new ImageHolder ( ) );
+                            String name = tokens.nextToken ( );
+                            String index = ImageLoader.getResourceIndex ( name );
+                            this.loadImages ( index, new String[] { name }, new ImageHolder ( ) );
                             break;
                         // Sequence of images (filename pattern)
                         case 'n':
@@ -121,15 +123,12 @@ public class ImageLoader {
                             if ( this.imagesMap.containsKey ( parts[0] ) )
                                 throw new BadConfigurationLineException ( "Sequence name " + parts[0] + " already defined" );
 
-                            File[] images = new File[imagesInSequence];
+                            String[] resources = new String[imagesInSequence];
 
-                            for ( int i = 0; i < imagesInSequence; i++ ) {
-                                images[i] = new File ( configurationFile.getParentFile ( ), parts[0] + i + parts[1] );
-                                if ( !images[i].exists ( ) )
-                                    throw new BadConfigurationLineException ( "Could not find image #" + i + " in sequence " + parts[0] );
-                            }
+                            for ( int i = 0; i < imagesInSequence; i++ )
+                                resources[i] = parts[0] + i + parts[1];
 
-                            this.loadImages ( parts[0], images, new ImageHolder ( ) );
+                            this.loadImages ( ImageLoader.getResourceIndex ( parts[0] ), resources, new ImageHolder ( ) );
                             break;
                         // Sequence of images in a single file
                         case 's':
@@ -141,15 +140,15 @@ public class ImageLoader {
                             if ( tokens.countTokens ( ) != 2 )
                                 throw new BadConfigurationLineException ( "Too many options for strip" );
 
-                            File stripFile = new File ( configurationFile.getParentFile ( ), tokens.nextToken ( ) );
-                            String stripIndex = ImageLoader.getFileName ( stripFile );
+                            String stripFile = tokens.nextToken ( );
+                            String stripIndex = ImageLoader.getResourceIndex ( stripFile );
                             int imagesInStrip = ImageLoader.intFromCommandToken ( tokens.nextToken ( ) );
 
                             BufferedImage stripImage;
                             try {
-                                stripImage = this.loadImage ( stripFile );
-                            } catch ( IOException e ) {
-                                throw new BadConfigurationLineException ( "Failed to read image strip file" );
+                                stripImage = this.loadImageFromStream ( this.getClass ( ).getResourceAsStream ( stripFile ) );
+                            } catch ( NullPointerException e ) {
+                                throw new BadConfigurationLineException ( "Could not read strip file: " + stripFile );
                             }
 
                             int imWidth = (int) ( stripImage.getWidth ( ) / imagesInStrip );
@@ -191,12 +190,12 @@ public class ImageLoader {
 
                             String groupName = tokens.nextToken ( );
 
-                            File[] groupImages = new File[tokens.countTokens ( )];
+                            String[] groupResources = new String[tokens.countTokens ( )];
                             int i = 0;
                             while ( tokens.hasMoreTokens ( ) )
-                                groupImages[i++] = new File ( configurationFile.getParentFile ( ), tokens.nextToken ( ) );
+                                groupResources[i++] = tokens.nextToken ( );
 
-                            this.loadImages ( groupName, groupImages, new GroupImageHolder ( ) );
+                            this.loadImages ( ImageLoader.getResourceIndex ( groupName ), groupResources, new GroupImageHolder ( ) );
                             break;
                         default:
                             throw new BadConfigurationLineException ( "No image load command found! First character should be o, n, s or g" );
@@ -208,7 +207,6 @@ public class ImageLoader {
                 // Recatch the exception to add additional debug information
                 e.setLineNumber ( lineNumber );
                 e.setLine ( line );
-                e.setConfigurationFile ( configurationFile );
                 throw e;
             }
         }
@@ -216,28 +214,33 @@ public class ImageLoader {
     }
 
     /**
-     * Loads the given images into the holder at the given index
+     * Loads the given images into the holder at the given index.
      * 
-     * @see #loadImage(String, File, BufferedImage, ImageHolder)
+     * @see #loadImage(String, String, BufferedImage, ImageHolder)
+     * @throws IOException if a given resource could not be read
      */
-    public void loadImages ( String index, File[] images, ImageHolder holder ) {
-        for ( File f : images )
-            try {
-                BufferedImage image = this.loadImage ( f );
-                this.loadImage ( index, f, image, holder );
-            } catch ( IOException e ) {
-                System.err.printf ( "Failed to read image file '%s': %s", f, e.getMessage ( ) );
-            }
+    public void loadImages ( String index, String[] resources, ImageHolder holder ) throws IOException {
+        for ( String resource : resources ) {
+            InputStream imageStream = this.getClass ( ).getResourceAsStream ( resource );
+            if ( imageStream == null )
+                throw new IOException ( String.format ( "Failed to read image file '%s'", resource ) );
+
+            BufferedImage image = this.loadImageFromStream ( imageStream );
+            this.loadImage ( index, resource, image, holder );
+        }
     }
 
     /**
      * Loads the given images into the holder at the given index
      * 
-     * @see #loadImage(String, File, BufferedImage, ImageHolder)
+     * @see #loadImage(String, String, BufferedImage, ImageHolder)
      */
-    public void loadImages ( String index, File[] imageFiles, BufferedImage[] images, ImageHolder holder ) throws KeyAlreadyExistsException {
+    public void loadImages ( String index, String[] indexNames, BufferedImage[] images, ImageHolder holder ) throws KeyAlreadyExistsException {
         for ( int i = 0; i < images.length; i++ )
-            this.loadImage ( index, imageFiles[i], images[i], holder );
+            if ( indexNames == null )
+                this.loadImage ( index, null, images[i], holder );
+            else
+                this.loadImage ( index, indexNames[i], images[i], holder );
     }
 
     /**
@@ -256,7 +259,7 @@ public class ImageLoader {
      * @param holder Holder to use if no holder exists at the given index
      * @throws KeyAlreadyExistsException if a holder exists at the given index *and* a holder is given
      */
-    public void loadImage ( String index, File imageFile, BufferedImage image, ImageHolder holder ) throws KeyAlreadyExistsException {
+    public void loadImage ( String index, String imageName, BufferedImage image, ImageHolder holder ) throws KeyAlreadyExistsException {
         if ( !this.imagesMap.containsKey ( index ) ) {
             if ( holder == null )
                 holder = new ImageHolder ( );
@@ -266,7 +269,8 @@ public class ImageLoader {
                 throw new KeyAlreadyExistsException ( "Attempted to create new image holder, but a holder is already present at the given index " + index );
         }
 
-        this.imagesMap.get ( index ).addImage ( imageFile, image );
+        System.out.println ( "Storing image by name " + imageName + " to holder indexed by " + index );
+        this.imagesMap.get ( index ).addImage ( imageName, image );
     }
 
     /**
@@ -352,26 +356,34 @@ public class ImageLoader {
     }
 
     /**
-     * Returns the file name of the given file (without the extension)
+     * Returns an appropriate name for the given resource
      * 
-     * @param file File to get name of
+     * @param name Resource to get index for
      * @return Name of file without extension
      */
-    public static String getFileName ( File file ) {
-        int index = file.getName ( ).lastIndexOf ( '.' );
-        if ( index > 0 && index <= file.getName ( ).length ( ) - 2 )
-            return file.getName ( ).substring ( 0, index );
-        return "";
+    public static String getResourceIndex ( String name ) {
+        
+        String base = name;
+        if ( name.contains ( "/" ) ) {
+            File f = new File ( name );
+            base = f.getName ( );
+            f = null;
+        }
+        
+        int index = base.lastIndexOf ( '.' );
+        if ( index > 0 && index <= base.length ( ) - 2 )
+            return base.substring ( 0, index );
+        return base;
     }
 
     /**
      * Load the given file name into a BufferedImage object
      * that is compatible with the current graphics device.
      * 
-     * @param f The file to load
+     * @param imageStream The input stream to load an image from
      * @throws IOException If the given file could not be read
      */
-    public BufferedImage loadImage ( File f ) throws IOException {
-        return ImageIO.read ( f );
+    public BufferedImage loadImageFromStream ( InputStream imageStream ) throws IOException {
+        return ImageIO.read ( imageStream );
     }
 }

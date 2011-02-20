@@ -1,7 +1,7 @@
 package javax.media.utils.loaders.sound;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 import javax.sound.sampled.UnsupportedAudioFileException;
 
@@ -10,11 +10,11 @@ public interface SoundHolder {
     /**
      * Loads the given File as a sound clip
      * 
-     * @param soundFile The audio file
+     * @param soundStream The audio file
      * @throws UnsupportedAudioFileException If the given sound file cannot be played
      * @throws IOException If the given file could not be opened, or the audio device is not available
      */
-    public void loadFile ( File soundFile ) throws UnsupportedAudioFileException, IOException;
+    public void loadStream ( InputStream soundStream ) throws UnsupportedAudioFileException, IOException;
 
     /**
      * Starts playing this audio clip

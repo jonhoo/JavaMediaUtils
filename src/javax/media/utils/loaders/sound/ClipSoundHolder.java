@@ -1,7 +1,7 @@
 package javax.media.utils.loaders.sound;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -24,9 +24,9 @@ public class ClipSoundHolder extends BaseSoundHolder implements SoundHolder, Lin
     private Clip clip;
 
     @Override
-    public void loadFile ( File soundFile ) throws UnsupportedAudioFileException, IOException {
+    public void loadStream ( InputStream soundStream ) throws UnsupportedAudioFileException, IOException {
         try {
-            AudioInputStream stream = AudioSystem.getAudioInputStream ( soundFile );
+            AudioInputStream stream = AudioSystem.getAudioInputStream ( soundStream );
             AudioFormat format = stream.getFormat ( );
 
             // Make sure output is PCM
