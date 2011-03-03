@@ -83,7 +83,7 @@ public class ImageLoader {
             lineNumber++;
 
             // Dummy statement for pretty layout of code
-            if ( line.isEmpty ( ) )
+            if ( line.length ( ) == 0 )
                 continue;
             else if ( line.startsWith ( "//" ) )
                 continue; // Comment
@@ -117,7 +117,7 @@ public class ImageLoader {
                             int imagesInSequence = ImageLoader.intFromCommandToken ( tokens.nextToken ( ) );
 
                             String[] parts = pattern.split ( "\\*", 0 );
-                            if ( parts.length != 2 || parts[0].isEmpty ( ) || parts[1].isEmpty ( ) )
+                            if ( parts.length != 2 || parts[0].length ( ) == 0 || parts[1].length ( ) == 0 )
                                 throw new BadConfigurationLineException ( "No * found in filename pattern" );
 
                             if ( this.imagesMap.containsKey ( parts[0] ) )
