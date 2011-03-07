@@ -108,14 +108,14 @@ public class SoundLoader {
                             s = new ClipSoundHolder ( );
                             break;
                         default:
-                            throw new BadConfigurationLineException ( "No image load command found! First character should be m or c" );
+                            throw new BadConfigurationLineException ( "No sound load command found! First character should be m or c" );
                     }
 
                     try {
                         s.loadStream ( is );
                         this.soundMap.put ( SoundLoader.getResourceIndex ( name ), s );
                     } catch ( UnsupportedAudioFileException e ) {
-                        throw new BadConfigurationLineException ( "Failed to load audo file: " + e.getMessage ( ) );
+                        throw new BadConfigurationLineException ( "Failed to load audio file: " + e.getMessage ( ) );
                     }
                 } catch ( KeyAlreadyExistsException e ) {
                     throw new BadConfigurationLineException ( e.getMessage ( ) );
